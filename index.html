@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Validador de DPI - Máquina de Turing</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; color: #333; margin: 0; padding: 20px; }
+        .container { max-width: 900px; margin: auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        h1 { text-align: center; color: #2c3e50; }
+        .form-group { margin-bottom: 15px; }
+        label { font-weight: bold; display: block; margin-bottom: 5px; }
+        input, select, button { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; font-size: 16px; }
+        button { background-color: #3498db; color: white; border: none; cursor: pointer; font-weight: bold; margin-top: 10px; }
+        button:hover { background-color: #2980b9; }
+        .results { margin-top: 30px; padding: 20px; border-radius: 5px; display: none; }
+        .results.ACEPTADO { background-color: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+        .results.RECHAZADO { background-color: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; font-family: monospace; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+        th { background-color: #2c3e50; color: white; }
+        .tape { font-size: 24px; letter-spacing: 5px; text-align: center; margin: 20px 0; font-weight: bold; color: #e74c3c; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Máquina de Turing: Validador DPI</h1>
+    <p style="text-align: center;">Proyecto de Autómatas - Guatemala</p>
+    
+    <form id="turingForm">
+        <div class="form-group">
+            <label>1. Cadena a analizar (DPI):</label>
+            <input type="text" id="cadena" value="1234-56789 0101" required>
+        </div>
+        <div class="form-group">
+            <label>2. Número de Nodos:</label>
+            <input type="number" id="nodos" value="16" required>
+        </div>
+        <div class="form-group">
+            <label>3. Alfabeto:</label>
+            <input type="text" id="alfabeto" value="0123456789- " required>
+        </div>
+        <div class="form-group">
+            <label>4. Método de Solución:</label>
+            <select id="metodo">
+                <option value="FLEXIBLE">Flexible (Limpia cinta con blancos)</option>
+                <option value="ESTRICTO">Estricto</option>
+            </select>
+        </div>
+        <button type="submit">Iniciar Máquina de Turing</button>
+    </form>
+
+    <div id="resultBox" class="results">
+        <h2 style="text-align: center;">Estado Final: <span id="estadoFinal"></span></h2>
+        <p><strong>Cinta limpia resultante:</strong></p>
+        <div class="tape" id="cintaFinal"></div>
+        <p><strong>ID Base de Datos:</strong> <span id="idDb"></span></p>
+
+        <h3>Historial de Transiciones (Cabezal)</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Paso</th>
+                    <th>Estado Origen</th>
+                    <th>Lee (Cinta)</th>
+                    <th>Escribe (Cinta)</th>
+                    <th>Movimiento</th>
+                    <th>Estado Destino</th>
+                </tr>
+            </thead>
+            <tbody id="tablaTransiciones">
+                <!-- Se llena con JavaScript -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+document.getElementById('turingForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const requestData = {
+        numero_nodos: parseInt(document.getElementById('nodos').value),
+        alfabeto: document.getElementById('alfabeto').value,
+        cadena_analizar: document.getElementById('cadena').value,
+        metodo_solucion: document.getElementById('metodo').value
+    };
+
+    try {
+        const response = await fetch('http://localhost:8000/analizar_dpi', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestData)
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            // Mostrar la caja de resultados con los colores correctos
+            const resultBox = document.getElementById('resultBox');
+            resultBox.style.display = 'block';
+            resultBox.className = 'results ' + data.resultado_final;
+            
+            document.getElementById('estadoFinal').textContent = data.resultado_final;
+            document.getElementById('cintaFinal').textContent = data.cinta_resultante;
+            document.getElementById('idDb').textContent = data.id_db;
+
+            // Limpiar y llenar la tabla
+            const tbody = document.getElementById('tablaTransiciones');
+            tbody.innerHTML = '';
+            
+            data.historial_transiciones.forEach(paso => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${paso.paso}</td>
+                    <td>${paso.estado_origen}</td>
+                    <td><strong>${paso.lee === 'B' ? 'Blanc' : paso.lee}</strong></td>
+                    <td><strong>${paso.escribe === 'B' ? 'Blanc' : paso.escribe}</strong></td>
+                    <td>${paso.movimiento}</td>
+                    <td>${paso.estado_destino}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        } else {
+            alert('Error en el análisis: ' + JSON.stringify(data));
+        }
+    } catch (error) {
+        alert('Error conectando con la API. ¿Está corriendo uvicorn main:app?');
+    }
+});
+</script>
+
+</body>
+</html>
